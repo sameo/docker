@@ -184,6 +184,14 @@ func (s *DockerSuite) TestBuildEnvironmentReplacementEnv(c *check.C) {
   RUN [ "$abc3" = '$foo' ] && (echo "$abc3" | grep -q foo)
   ENV abc4 "\$foo"
   RUN [ "$abc4" = '$foo' ] && (echo "$abc4" | grep -q foo)
+  ENV foo2="abc\def"
+  RUN [ "$foo2" = 'abc\def' ]
+  ENV foo3="abc\\def"
+  RUN [ "$foo3" = 'abc\def' ]
+  ENV foo4='abc\\def'
+  RUN [ "$foo4" = 'abc\\def' ]
+  ENV foo5='abc\def'
+  RUN [ "$foo5" = 'abc\def' ]
   `))
 
 	envResult := []string{}
@@ -5818,7 +5826,7 @@ func (s *DockerSuite) TestBuildSquashParent(c *check.C) {
 	c.Assert(len(splitTestHistory), checker.Equals, len(splitOrigHistory)+1)
 
 	out = inspectImage(c, id, "len .RootFS.Layers")
-	c.Assert(strings.TrimSpace(out), checker.Equals, "3")
+	c.Assert(strings.TrimSpace(out), checker.Equals, "2")
 }
 
 func (s *DockerSuite) TestBuildContChar(c *check.C) {
@@ -6133,7 +6141,7 @@ func (s *DockerSuite) TestBuildCopyFromPreviousFromWindows(c *check.C) {
 func (s *DockerSuite) TestBuildCopyFromForbidWindowsSystemPaths(c *check.C) {
 	testRequires(c, DaemonIsWindows)
 	dockerfile := `
-		FROM ` + testEnv.MinimalBaseImage() + `		
+		FROM ` + testEnv.MinimalBaseImage() + `
 		FROM ` + testEnv.MinimalBaseImage() + `
 		COPY --from=0 %s c:\\oscopy
 		`
@@ -6150,7 +6158,7 @@ func (s *DockerSuite) TestBuildCopyFromForbidWindowsSystemPaths(c *check.C) {
 func (s *DockerSuite) TestBuildCopyFromForbidWindowsRelativePaths(c *check.C) {
 	testRequires(c, DaemonIsWindows)
 	dockerfile := `
-		FROM ` + testEnv.MinimalBaseImage() + `		
+		FROM ` + testEnv.MinimalBaseImage() + `
 		FROM ` + testEnv.MinimalBaseImage() + `
 		COPY --from=0 %s c:\\oscopy
 		`
@@ -6169,7 +6177,7 @@ func (s *DockerSuite) TestBuildCopyFromWindowsIsCaseInsensitive(c *check.C) {
 	testRequires(c, DaemonIsWindows)
 	dockerfile := `
 		FROM ` + testEnv.MinimalBaseImage() + `
-		COPY foo /	
+		COPY foo /
 		FROM ` + testEnv.MinimalBaseImage() + `
 		COPY --from=0 c:\\fOo c:\\copied
 		RUN type c:\\copied
@@ -6322,23 +6330,23 @@ func (s *DockerSuite) TestBuildLineErrorOnBuild(c *check.C) {
 }
 
 // FIXME(vdemeester) should be a unit test
-func (s *DockerSuite) TestBuildLineErrorUknownInstruction(c *check.C) {
+func (s *DockerSuite) TestBuildLineErrorUnknownInstruction(c *check.C) {
 	name := "test_build_line_error_unknown_instruction"
-	buildImage(name, build.WithDockerfile(`FROM busybox
+	cli.Docker(cli.Build(name), build.WithDockerfile(`FROM busybox
   RUN echo hello world
   NOINSTRUCTION echo ba
   RUN echo hello
   ERROR
   `)).Assert(c, icmd.Expected{
 		ExitCode: 1,
-		Err:      "Dockerfile parse error line 3: Unknown instruction: NOINSTRUCTION",
+		Err:      "Dockerfile parse error line 3: unknown instruction: NOINSTRUCTION",
 	})
 }
 
 // FIXME(vdemeester) should be a unit test
 func (s *DockerSuite) TestBuildLineErrorWithEmptyLines(c *check.C) {
 	name := "test_build_line_error_with_empty_lines"
-	buildImage(name, build.WithDockerfile(`
+	cli.Docker(cli.Build(name), build.WithDockerfile(`
   FROM busybox
 
   RUN echo hello world
@@ -6348,21 +6356,21 @@ func (s *DockerSuite) TestBuildLineErrorWithEmptyLines(c *check.C) {
   CMD ["/bin/init"]
   `)).Assert(c, icmd.Expected{
 		ExitCode: 1,
-		Err:      "Dockerfile parse error line 6: Unknown instruction: NOINSTRUCTION",
+		Err:      "Dockerfile parse error line 6: unknown instruction: NOINSTRUCTION",
 	})
 }
 
 // FIXME(vdemeester) should be a unit test
 func (s *DockerSuite) TestBuildLineErrorWithComments(c *check.C) {
 	name := "test_build_line_error_with_comments"
-	buildImage(name, build.WithDockerfile(`FROM busybox
+	cli.Docker(cli.Build(name), build.WithDockerfile(`FROM busybox
   # This will print hello world
   # and then ba
   RUN echo hello world
   NOINSTRUCTION echo ba
   `)).Assert(c, icmd.Expected{
 		ExitCode: 1,
-		Err:      "Dockerfile parse error line 5: Unknown instruction: NOINSTRUCTION",
+		Err:      "Dockerfile parse error line 5: unknown instruction: NOINSTRUCTION",
 	})
 }
 
